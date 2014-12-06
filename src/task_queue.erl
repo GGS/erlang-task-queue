@@ -29,14 +29,14 @@ start(Module, Args) ->
     start(Module, Args, []).
 
 start(Module, Args, Options) ->
-    start_link(Module, Args, [{unlink, true} | Options]).
+    start_link(Module, Args, [{unlink, true} | Options]). 
 
 start_link(Module, Args) ->
     start_link(Module, Args, []).
 
 start_link(Module, Args, Options) 
         when is_atom(Module), is_list(Options) ->
-    {ok, TaskQueueSup} = task_queue_sup:start_link(),
+    {ok, TaskQueueSup} = task_queue_sup:start_link(),% создание очереди ->PID
     {ok, TaskManager} =
         supervisor:start_child(
             TaskQueueSup,
@@ -53,7 +53,7 @@ start_link(Module, Args, Options)
         supervisor:start_child(
             TaskQueueSup,
             task_queue_sup:child_spec(
-                <<"task_queue_workers_sup">>, task_queue_workers_sup, supervisor, [ NewOptions ])),
+                <<"task_queue_workers_sup">>, task_queue_workers_sup, supervisor, [ NewOptions ])), %запускает воркеры сколько указано
 
     case proplists:get_value(unlink, Options, false) of
         true -> erlang:unlink(TaskQueueSup);
@@ -66,7 +66,7 @@ stop(TaskQueue) ->
     true = erlang:exit(TaskQueue, shutdown).
 
 in(Task, TaskQueue) ->
-    gen_server:cast(TaskQueue, {in, Task}).
+    gen_server:cast(TaskQueue, {in, Task}). % -> manager sup
 
 in_r(Task, TaskQueue) ->
     gen_server:cast(TaskQueue, {in_r, Task}).

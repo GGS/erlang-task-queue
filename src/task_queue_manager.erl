@@ -25,13 +25,13 @@
         queue_items = sets:new() :: sets:set(),
         queue_length = 0 :: non_neg_integer() % queue:len() is O(N)
     }).
-
+-define(SERVER, ?MODULE).
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 start_link(Options) ->
-    gen_server:start_link(?MODULE, Options, []).
+    gen_server:start_link({local, ?SERVER},?MODULE, Options, []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -50,7 +50,11 @@ handle_call(unique_tasks, _From, #state{ unique_tasks = UniqueTasks } = State) -
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
-
+%
+%При получение задачи если метод in in_r, проверяем есть ли доступные воркеры: 
+%Есть: 1.берём перый ожидающий воркер из очереди
+%2.отсылаем ему задание,3 убираем его из ожидания
+%Нет: ставим задание в очередь на выполнение
 handle_cast({Method, Task}, State)
         when Method =:= in;
              Method =:= in_r ->
@@ -67,10 +71,14 @@ handle_cast({Method, Task}, State)
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
-
+%
+%При получение сообщеня от воркера get_task - добавляем его в список свободных воркеров
+% если очередь заданий пуста
 handle_info({get_task, WorkerPid}, #state{ queue_length = 0 } = State) ->
     {noreply, add_waiting_worker(WorkerPid, State)};
-
+%
+% иначе забираем задание из очереди, отсылаем на обработку и возвращаем новый статус
+%
 handle_info({get_task, WorkerPid}, State) ->
     {Task, NewState} = dequeue_task(State),
     WorkerPid ! { task, Task },
